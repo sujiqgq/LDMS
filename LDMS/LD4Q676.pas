@@ -1,0 +1,286 @@
+unit LD4Q676;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  Qrctrls, QuickRpt, ExtCtrls;
+
+type
+  TfrmLD4Q676 = class(TForm)
+    QuickRep: TQuickRep;
+    QRBand2: TQRBand;
+    QRShape13: TQRShape;
+    QRShape12: TQRShape;
+    QRShape14: TQRShape;
+    QRShape21: TQRShape;
+    Qrl_No: TQRLabel;
+    Qrl_birth: TQRLabel;
+    Qrl_bunju: TQRLabel;
+    QRShape32: TQRShape;
+    Qrl_name: TQRLabel;
+    QRShape5: TQRShape;
+    QRShape15: TQRShape;
+    Qrl_U066: TQRLabel;
+    Qrl_sample: TQRLabel;
+    QRShape10: TQRShape;
+    QRShape16: TQRShape;
+    QRShape18: TQRShape;
+    QRShape23: TQRShape;
+    QRShape26: TQRShape;
+    QRShape27: TQRShape;
+    Qrl_U067: TQRLabel;
+    Qrl_U068: TQRLabel;
+    Qrl_U069: TQRLabel;
+    Qrl_U071: TQRLabel;
+    Qrl_U070: TQRLabel;
+    Qrl_999: TQRBand;
+    QRLabel1: TQRLabel;
+    QRSysData2: TQRSysData;
+    QRLabel5: TQRLabel;
+    Qrl_Date: TQRLabel;
+    QRShape1: TQRShape;
+    QRShape3: TQRShape;
+    QRShape6: TQRShape;
+    QRShape8: TQRShape;
+    QRLabel2: TQRLabel;
+    QRLabel4: TQRLabel;
+    QRLabel7: TQRLabel;
+    QRShape29: TQRShape;
+    QRShape31: TQRShape;
+    QRShape4: TQRShape;
+    QRLabel6: TQRLabel;
+    QRShape7: TQRShape;
+    QRShape9: TQRShape;
+    QRShape11: TQRShape;
+    QRShape17: TQRShape;
+    QRShape22: TQRShape;
+    QRShape24: TQRShape;
+    QRShape25: TQRShape;
+    QRLabel15: TQRLabel;
+    QRLabel9: TQRLabel;
+    QRLabel13: TQRLabel;
+    QRLabel16: TQRLabel;
+    QRShape19: TQRShape;
+    QRShape20: TQRShape;
+    QRLabel11: TQRLabel;
+    QRL_gmgn: TQRLabel;
+    QRShape28: TQRShape;
+    QRShape30: TQRShape;
+    QRShape33: TQRShape;
+    QRLabel12: TQRLabel;
+    QRLabel17: TQRLabel;
+    QRLabel18: TQRLabel;
+    QRShape34: TQRShape;
+    QRShape35: TQRShape;
+    QRShape36: TQRShape;
+    QRShape2: TQRShape;
+    QRShape37: TQRShape;
+    QRLabel3: TQRLabel;
+    Qrl_U072: TQRLabel;
+    QRLabel8: TQRLabel;
+    Qrl_U073: TQRLabel;
+    QRLabel10: TQRLabel;
+    Qrl_U074: TQRLabel;
+    QRLabel14: TQRLabel;
+    QRLabel19: TQRLabel;
+    QRShape38: TQRShape;
+    QRShape39: TQRShape;
+    Qrl_U053: TQRLabel;
+    Qrl_U054: TQRLabel;
+    procedure QuickRepNeedData(Sender: TObject; var MoreData: Boolean);
+    procedure QuickRepBeforePrint(Sender: TCustomQuickRep;
+      var PrintReport: Boolean);
+    procedure Print;
+  private
+    UV_iCount, sRec, cRow, iRow, iNo,
+    sum_U066, sum_U067, sum_U068, sum_U069, sum_U070, sum_U071, sum_U072, sum_U073, sum_U074, sum_U053, sum_U054   : Integer;
+
+    qlArray : array of TQRLabel;
+    Check_Last : Boolean;
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmLD4Q676: TfrmLD4Q676;
+
+implementation
+
+uses ZZFunc, ZZMenu, ZZComm, MdmsFunc,LD4Q67;
+
+{$R *.DFM}
+
+procedure TfrmLD4Q676.QuickRepNeedData(Sender: TObject; var MoreData: Boolean);
+  var temp,tempa :String;
+      j : integer;
+  begin
+
+   inherited;
+
+   with frmLD4Q67.grdMaster do
+   begin
+
+      // 자료가 없을경우의 처리
+      if Rows = 0 then
+      begin
+         MoreData := False;
+         exit;
+      end;
+
+      inc(UV_iCount);
+
+      qrl_U066.Caption := '';
+      qrl_U067.Caption := '';
+      qrl_U068.Caption := '';
+      qrl_U069.Caption := '';
+      qrl_U070.Caption := '';
+      qrl_U071.Caption := '';
+      qrl_U072.Caption := '';
+      qrl_U073.Caption := '';
+      qrl_U074.Caption := '';
+      qrl_U053.Caption := '';
+      qrl_U054.Caption := '';
+
+      for j:=UV_iCount to Rows+1 do
+      begin
+
+         if j = Rows+1 then
+         begin
+            QRL_NO.caption     := '';
+            QRL_SAMPLE.Caption := '';
+            QRL_BUNJU.Caption  := '';
+            QRL_NAME.Caption   := '총합계';
+            QRL_BIRTH.Caption  := '';
+            QRL_GMGN.Caption   := '';
+            qrl_U066.Caption   := IntToStr(sum_U066);
+            qrl_U067.Caption   := IntToStr(sum_U067);
+            qrl_U068.Caption   := IntToStr(sum_U068);
+            qrl_U069.Caption   := IntToStr(sum_U069);
+            qrl_U070.Caption   := IntToStr(sum_U070);
+            qrl_U071.Caption   := IntToStr(sum_U071);
+            qrl_U072.Caption   := IntToStr(sum_U072);
+            qrl_U073.Caption   := IntToStr(sum_U073);
+            qrl_U074.Caption   := IntToStr(sum_U074);
+            qrl_U053.Caption   := IntToStr(sum_U053);
+            qrl_U054.Caption   := IntToStr(sum_U054);
+         end
+         else if (Check_Last) or (J = Rows) then
+         begin
+            Print;
+            Check_Last := False;
+            break;
+         end
+         else if (Cell[3, UV_iCount] = Cell[3, UV_iCount+1]) and
+                 (Cell[4, UV_iCount] = Cell[4, UV_iCount+1]) then
+         begin
+            Print;
+            inc(UV_iCount);
+         end
+         else
+         begin
+            Check_Last := True;
+         end;
+      end;
+
+      inc(iNo);
+      QRL_NO.caption := IntToStr(iNo); //No.
+
+      if UV_iCount <= Rows+1 then
+         MoreData := True
+      else
+         MoreData := False;
+   end;
+
+end;
+
+procedure TfrmLD4Q676.QuickRepBeforePrint(Sender: TCustomQuickRep;
+  var PrintReport: Boolean);
+begin
+   inherited;
+   QRL_date.Caption := copy(frmLD4Q67.EdtBDate.Text,1,4) + '년'  +
+                       copy(frmLD4Q67.EdtBDate.Text,5,2) + '월'  +
+                       copy(frmLD4Q67.EdtBDate.Text,7,2) + '일';
+   UV_iCount := 0;
+   iNo := 0;
+   sum_U066 := 0; sum_U067 := 0; sum_U068 := 0; sum_U069 := 0; sum_U070 := 0; sum_U071 := 0; sum_U072 := 0; sum_U073 := 0;  sum_U074 := 0;  sum_U053 := 0; sum_U054 := 0;
+end;
+
+
+procedure TfrmLD4Q676.Print;
+begin
+   with frmLD4Q67.grdMaster do
+   begin
+      QRL_SAMPLE.Caption := Cell[2, UV_iCount]; //샘플번호
+      QRL_BUNJU.Caption  := Cell[3, UV_iCount]; //분주번호
+      QRL_NAME.Caption   := copy(Cell[4, UV_iCount],1,14); //성명
+      if copy(Cell[5,UV_iCount],8,1) <> '' then //생년월일
+      begin
+        case StrToInt(copy(Cell[5,UV_iCount],8,1)) of
+          1,3,5,7,9 : QRL_BIRTH.Caption := 'M/' + copy(Cell[5,UV_iCount],1,6);
+          2,4,6,8   : QRL_BIRTH.Caption := 'F/' + copy(Cell[5,UV_iCount],1,6);
+        end;
+      end
+      else QRL_BIRTH.Caption := '';
+      QRL_GMGN.Caption   := Cell[6, UV_iCount]; //검진일자
+      //검사항목
+      if      Cell[7,UV_iCount] = 'U066' then
+      begin
+          qrl_U066.Caption := '*';
+          inc(sum_U066);
+      end
+      else if Cell[7,UV_iCount] = 'U067' then
+      begin
+          qrl_U067.Caption := '*';
+          inc(sum_U067);
+      end
+      else if Cell[7,UV_iCount] = 'U068' then
+      begin
+          qrl_U068.Caption := '*';
+          inc(sum_U068);
+      end
+      else if Cell[7,UV_iCount] = 'U069' then
+      begin
+          qrl_U069.Caption := '*';
+          inc(sum_U069);
+      end
+      else if Cell[7,UV_iCount] = 'U070' then
+      begin
+          qrl_U070.Caption := '*';
+          inc(sum_U070);
+      end
+      else if Cell[7,UV_iCount] = 'U071' then
+      begin
+          qrl_U071.Caption := '*';
+          inc(sum_U071);
+      end
+      else if Cell[7,UV_iCount] = 'U072' then
+      begin
+          qrl_U072.Caption := '*';
+          inc(sum_U072);
+      end
+      else if Cell[7,UV_iCount] = 'U073' then
+      begin
+          qrl_U073.Caption := '*';
+          inc(sum_U073);
+      end
+      else if Cell[7,UV_iCount] = 'U053' then
+      begin
+          qrl_U053.Caption := '*';
+          inc(sum_U053);
+      end
+      else if Cell[7,UV_iCount] = 'U054' then
+      begin
+          qrl_U054.Caption := '*';
+          inc(sum_U054);
+      end
+      else if Cell[7,UV_iCount] = 'U074' then
+      begin
+          qrl_U074.Caption := '*';
+          inc(sum_U074);
+      end;
+   end;
+end;
+
+end.

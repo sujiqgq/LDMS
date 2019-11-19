@@ -1,0 +1,499 @@
+unit LD4Q74;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  ORSingle, Menus, Buttons, ComCtrls, ToolWin, Db, DBTables, Grids, DBGrids,
+  Grids_ts, TSGrid, ExtCtrls, StdCtrls, Mask, DateEdit, DdeMan, Gauges;
+
+type
+  TfrmLD4Q74 = class(TfrmSingle)
+    grdMaster: TtsGrid;
+    pnlCond: TPanel;
+    qrygumgin: TQuery;
+    Label7: TLabel;
+    cmbJisa: TComboBox;
+    Label3: TLabel;
+    btnBdate: TSpeedButton;
+    Label5: TLabel;
+    edtBDate: TDateEdit;
+    qryCheck: TQuery;
+    qryBunju: TQuery;
+    RBtn_preveiw: TRadioButton;
+    RadioButton2: TRadioButton;
+    qrytkgum: TQuery;
+    qryProfile: TQuery;
+    MEdt_SampE: TMaskEdit;
+    Label13: TLabel;
+    MEdt_SampS: TMaskEdit;
+    Label12: TLabel;
+    Cmb_gubn: TComboBox;
+    mskFrom: TMaskEdit;
+    mskTo: TMaskEdit;
+    Chk_15: TCheckBox;
+    Chk_12: TCheckBox;
+    Chk_11: TCheckBox;
+    Chk_43: TCheckBox;
+    Chk_71: TCheckBox;
+    Chk_61: TCheckBox;
+    Chk_51: TCheckBox;
+    CheckBox: TCheckBox;
+    Label4: TLabel;
+    grd_New: TtsGrid;
+    btnGmgnF: TSpeedButton;
+    Gride: TGauge;
+    Chk_bunju: TRadioButton;
+    chk_gum: TRadioButton;
+    msk_date: TDateEdit;
+    procedure FormCreate(Sender: TObject);
+    procedure grdMasterCellLoaded(Sender: TObject; DataCol,
+      DataRow: Integer; var Value: Variant);
+    procedure btnQueryClick(Sender: TObject);
+    procedure UP_Click(Sender: TObject);
+    procedure btnPrintClick(Sender: TObject);
+    procedure Ck_NewClick(Sender: TObject);
+  private
+    { Private declarations }
+    // Grid와 연관된 Variant 변수 선언
+    UV_vNo, UV_vName, UV_vNum_samp , UV_vJumin : Variant;
+    sHangmok, sSex : String;
+
+    // 공통적으로 사용하는 함수(이름을 동일하게 사용)
+    procedure UP_VarMemSet(iLength : Integer);
+    function  UF_Condition : Boolean;
+    Procedure Hangmok_Set;
+  public
+    { Public declarations }
+  end;
+
+var
+  frmLD4Q74: TfrmLD4Q74;
+
+implementation
+
+uses ZZFunc, ZZMenu, ZZComm, MdmsFunc,  LD4Q742;
+
+{$R *.DFM}
+
+procedure TfrmLD4Q74.UP_VarMemSet(iLength : Integer);
+begin
+   // Variant Memory Allocation
+   if iLength = 0 then
+   begin
+      // Variant변수를 사용하기 위해서 생성
+      UV_vNo    := VarArrayCreate([0, 0], varOleStr);
+      UV_vName  := VarArrayCreate([0, 0], varOleStr);
+      UV_vJumin := VarArrayCreate([0, 0], varOleStr);
+      UV_vNum_samp  := VarArrayCreate([0, 0], varOleStr);
+  end
+   else
+   begin
+      // 이미 생성된 변수들의 크기를 조정
+      VarArrayRedim(UV_vNo,    iLength);
+      VarArrayRedim(UV_vName,  iLength);
+      VarArrayRedim(UV_vJumin,  iLength);
+      VarArrayRedim(UV_vNum_samp,  iLength);
+   end;
+end;
+
+function TfrmLD4Q74.UF_Condition : Boolean;
+begin
+   Result := True;
+
+   // 조회조건중 필수항목이 입력되었는지 Check
+   if (edtBDate.Text = '') and (msk_date.Text = '') then
+   begin
+      GF_MsgBox('Warning', 'CONDITION');
+      Result := False;
+   end;
+end;
+
+procedure TfrmLD4Q74.FormCreate(Sender: TObject);
+begin
+   inherited;
+   UP_VarMemSet(0);
+   // 지사가 전체일 경우 지사를 Combo에 보여줌
+   GP_ComboJisa(cmbjisa);
+
+   // Default로 본사(15)를 선택
+   GP_ComboDisplay(cmbjisa, copy(GV_sUserId,1,2), 2);
+   Cmb_gubn.ItemIndex := 1;
+   edtBDate.Text := GV_sToday;
+   msk_date.Text := GV_sToday;
+
+   begin
+      Label4.Visible  := True;
+      Chk_15.Visible  := True;
+      Chk_12.Visible  := True;
+      Chk_11.Visible  := True;
+      Chk_43.Visible  := True;
+      Chk_71.Visible  := True;
+      Chk_61.Visible  := True;
+      Chk_51.Visible  := True;
+   end;
+
+   grdMaster.Visible := false;
+   grd_New.Visible   := True;
+end;
+
+procedure TfrmLD4Q74.grdMasterCellLoaded(Sender: TObject; DataCol,
+  DataRow: Integer; var Value: Variant);
+begin
+   inherited;
+
+      // 자룔를 화면에 조회
+      case DataCol of
+         1 : Value := UV_vNo[DataRow-1];
+         2 : Value := UV_vNum_samp[DataRow-1];
+         3 : Value := UV_vName[DataRow-1];
+         4 : Value := UV_vJumin[DataRow-1];
+      end;
+
+end;
+
+procedure TfrmLD4Q74.btnQueryClick(Sender: TObject);
+var index, I : Integer;
+    sSelect, sWhere, sOrderBy, sCheck, sJisa : String;
+begin
+   inherited;
+   sSelect := ''; sWhere := ''; sOrderBy := '';  sJisa := '';
+   index := 0;
+
+   // 조회조건 Check
+   if not UF_Condition then exit;
+
+   // Grid 초기화
+   grdMaster.Rows := 0;
+   UP_VarMemSet(0);
+   with qryBunju do
+   begin
+      // SQL문 생성
+      Close;
+      if Chk_bunju.Checked= true then
+      begin
+           sSelect := ' select B.desc_rackno, B.cod_bjjs, B.num_id, B.dat_bunju, B.num_bunju, B.cod_jisa, B.dat_gmgn, G.num_jumin, G.num_samp, G.gubn_hulgum           ' +
+                      ' FROM bunju B with(nolock) LEFT OUTER JOIN gumgin G with(nolock) ON B.cod_jisa = G.cod_jisa and B.num_id = G.num_id and B.dat_gmgn = G.dat_gmgn ';
+
+           //[2012.02.22]자체검진 처리시 추가 내용...
+           if (edtBDate.Text > '20120301') then
+           begin
+              if (Copy(cmbJisa.Text,1,2) = '15') then
+              begin
+                 sWhere := ' Where B.Cod_bjjs = ''' + Copy(cmbJisa.Text,1,2) + ''' ';
+                 sWhere := sWhere + ' And B.Dat_Bunju = ''' + edtBDate.Text + '''';
+           
+                 if Chk_15.Checked then sJisa := sJisa + '''15'',';
+                 if Chk_12.Checked then sJisa := sJisa + '''12'',';
+                 if Chk_11.Checked then sJisa := sJisa + '''11'',';
+                 if Chk_43.Checked then sJisa := sJisa + '''43'',';
+                 if Chk_71.Checked then sJisa := sJisa + '''71'',';
+                 if Chk_61.Checked then sJisa := sJisa + '''61'',';
+                 if Chk_51.Checked then sJisa := sJisa + '''51'',';
+                 
+                 if sJisa <> '' then
+                    sWhere := sWhere + ' And B.Cod_jisa in (' + copy(sJisa,1, Length(sJisa)-1) + ')'
+                 else
+                 begin
+                    showmessage('검진센터를 선택해주세요!');
+                    exit;
+                 end;
+              end
+              else
+              begin
+                 sWhere := ' Where B.Cod_bjjs in (''15'',''' + Copy(cmbJisa.Text,1,2) + ''')';
+                 sWhere := sWhere + ' and B.Cod_jisa = ''' + Copy(cmbJisa.Text,1,2) + ''' ';
+                 sWhere := sWhere + ' and B.Dat_Bunju = ''' + edtBDate.Text + '''';
+                 sWhere := sWhere + ' and G.gubn_hulgum <> ''1''';
+              end;
+           end
+           else
+           begin
+              sWhere := ' Where B.Cod_bjjs = ''' + Copy(cmbJisa.Text,1,2) + ''' ';
+              sWhere := sWhere + ' And B.Dat_Bunju = ''' + edtBDate.Text + '''';
+           end;
+           sWhere := sWhere + ' And B.Dat_Bunju = ''' + edtBDate.Text + '''';
+
+           if Cmb_gubn.Text = '분주번호' then
+           begin
+              if Trim(mskFrom.Text) <> '' then
+                 sWhere := sWhere + ' AND B.num_bunju >= ''' + mskFrom.Text + '''';
+              if Trim(mskTo.Text) <> '' then
+                 sWhere := sWhere + ' AND B.num_bunju <= ''' + mskTo.Text + '''';
+           
+              sOrderBy := ' ORDER BY CAST(B.num_bunju AS INT), G.num_samp ';
+           end
+           else if Cmb_gubn.Text = '샘플번호' then
+           begin
+              if Trim(MEdt_SampS.Text) <> '' then
+                 sWhere := sWhere + ' AND G.num_samp >= ''' + MEdt_SampS.Text + '''';
+              if Trim(MEdt_SampE.Text) <> '' then
+                 sWhere := sWhere + ' AND G.num_samp <= ''' + MEdt_SampE.Text + '''';
+
+              sOrderBy := ' ORDER BY CAST(G.num_samp AS INT), B.num_bunju '
+           end
+      end
+      else if Chk_gum.Checked = true then
+      begin
+           sSelect := ' select B.desc_rackno, B.cod_bjjs, g.num_id, B.dat_bunju, B.num_bunju, g.cod_jisa, g.dat_gmgn, G.num_jumin, G.num_samp, G.gubn_hulgum           ' +
+                      ' FROM gumgin G with(nolock) LEFT OUTER JOIN bunju B with(nolock) ON B.cod_jisa = G.cod_jisa and B.num_id = G.num_id and B.dat_gmgn = G.dat_gmgn ';
+                 sWhere := ' Where G.DAt_gmgn = ''' + msk_date.Text + ''' ';
+
+                 if Chk_15.Checked then sJisa := sJisa + '''15'',';
+                 if Chk_12.Checked then sJisa := sJisa + '''12'',';
+                 if Chk_11.Checked then sJisa := sJisa + '''11'',';
+                 if Chk_43.Checked then sJisa := sJisa + '''43'',';
+                 if Chk_71.Checked then sJisa := sJisa + '''71'',';
+                 if Chk_61.Checked then sJisa := sJisa + '''61'',';
+                 if Chk_51.Checked then sJisa := sJisa + '''51'',';
+                 
+                 if sJisa <> '' then
+                    sWhere := sWhere + ' and   G.Cod_jisa in (' + copy(sJisa,1, Length(sJisa)-1) + ')'
+                 else
+                 begin
+                    showmessage('검진센터를 선택해주세요!');
+                    exit;
+                 end;
+
+
+           sOrderBy := ' ORDER BY  G.dat_gmgn, G.num_samp'
+      end;
+
+      SQL.Clear;
+      SQL.Add(sSelect + sWhere + sOrderBy);
+      Open;
+      Gride.MaxValue := RecordCount;
+      if RecordCount > 0 then
+      begin
+         GP_query_log(qryBunju, 'LD4Q74', 'Q', 'N');
+         For I := 1 to RecordCount do
+         Begin
+            //검진Check
+            With qryGumgin Do
+            Begin
+               Close;
+               ParamByName('In_Cod_Jisa').AsString := qryBunju.FieldByName('Cod_jisa').AsString;
+               ParamByName('In_Dat_gmgn').AsString := qryBunju.FieldByName('DaT_Gmgn').AsString;
+               ParamByName('In_NuM_id').AsString   := qryBunju.FieldByName('Num_id').AsString;
+               Open;
+               sHangmok := '';
+
+               //단체 Check
+               With qryCheck Do
+               Begin
+                  Close;
+                  ParamByName('In_Cod_dc').AsString := qryGumgin.FieldByname('Cod_dc').AsString;
+                  ParamByName('num_year').AsString  := copy(qryGumgin.FieldByname('DaT_Gmgn').AsString,1,4);
+                  Open;
+                  sCheck := '';
+                  If Recordcount > 0 Then
+                     If (qryGumgin.FieldByName('DaT_Gmgn').AsString >= FieldByname('Dat_Start').AsString) And
+                        (qryGumgin.FieldByName('DaT_Gmgn').AsString <= FieldByname('Dat_End').AsString) Then
+                        sCheck := '99';
+                  Close;
+               End;
+
+
+               if (pos('Y004',qryGumgin.FieldByName('cod_chuga').AsString) > 0) then
+                  sCheck := '99';
+               if (FieldByname('Cod_hul').Asstring <> '') then sCheck := '99';
+               If Copy(FieldByname('Cod_Jangbi').Asstring,1,2) = 'SS' Then sCheck := '99';
+               If (Chk_bunju.Checked =true) and (qryBunju.FieldByName('Num_Bunju').AsInteger > 4999)  Then sCheck := '99';
+
+               //본원 분주시 지방센터 자체검진 제외...
+               if (Copy(cmbJisa.Text,1,2) = '15') and (edtBDate.Text > '20120301') then
+               begin
+                 if (qryBunju.FieldByName('Cod_jisa').AsString    <> '15') and
+                    (qryBunju.FieldByName('gubn_hulgum').AsString =   '3') then sCheck := '';
+               end;
+
+               //===============================================================
+               If sCheck = '99' Then Hangmok_Set;
+               //===============================================================
+
+               If Pos('Y004',sHangmok) > 0 Then
+               Begin
+                  UP_VarMemSet(Index);
+                   case StrToInt(Copy(FieldByName('Num_jumin').AsString, 7, 1)) of
+                        1,3,5,7,9 : sSex := 'M';
+                        2,4,6,8   : sSex := 'F';
+                   end;
+                   UV_vNo[Index]        := IntToStr(Index+1);
+                   UV_vNum_Samp[Index]  := qryBunju.FieldByName('Num_Samp').AsString;
+                   UV_vName[Index]      := qryGumgin.FieldByName('desc_name').AsString;
+                   UV_vJumin[Index]     := copy(FieldByName('Num_jumin').AsString,1,6) + '/'  +sSex;
+                   Inc(Index);
+               End
+            End;
+
+            Gride.Progress := i;
+            Next;
+         End;
+      end
+      else
+      begin
+         // 자료가 없음을 표시
+         GF_MsgBox('Information', 'NODATA');
+         exit;
+      end;  // if RecordCount > 0 then
+      Close;
+   end;  // with qry_gulkwa do
+
+   // Grid에 자료를 할당
+   grdMaster.Rows := index;
+   grd_New.Rows := index;
+   // Query Mode & Msg
+   if Sender = btnQuery then UP_SetMode('QUERY');
+end;
+
+procedure TfrmLD4Q74.UP_Click(Sender: TObject);
+begin
+   inherited;
+   if Sender = btnBdate then GF_CalendarClick(edtBDate);
+   if Sender = btnGmgnF then GF_CalendarClick(msk_date);
+   if Sender = CheckBox then
+   begin
+      if CheckBox.Checked then
+      begin
+         CheckBox.Caption := 'UnCheck All';
+         Chk_15.Checked := True; Chk_12.Checked := True;
+         Chk_11.Checked := True; Chk_43.Checked := True;
+         Chk_71.Checked := True; Chk_61.Checked := True;
+         Chk_51.Checked := True;
+      end
+      else
+      begin
+         CheckBox.Caption := 'Check All';
+         Chk_15.Checked := False; Chk_12.Checked  := False;
+         Chk_11.Checked := False; Chk_43.Checked  := False;
+         Chk_71.Checked := False; Chk_61.Checked  := False;
+         Chk_51.Checked := False;
+      end;
+   end;
+   if Sender = Chk_gum then
+   begin
+      edtBDate.Enabled    :=False;
+      edtBDate.ReadOnly   :=True;
+      MEdt_SampS.ReadOnly :=True;
+      MEdt_SampE.ReadOnly :=True;
+      mskFrom.ReadOnly    :=True;
+      mskTo.ReadOnly      :=True;
+      msk_date.ReadOnly :=False;
+      msk_date.Enabled  :=True;
+   end;
+   if Sender = Chk_bunju then
+   begin
+      edtBDate.Enabled    :=True;
+      edtBDate.ReadOnly   :=False;
+      MEdt_SampS.ReadOnly :=False;
+      MEdt_SampE.ReadOnly :=False;
+      mskFrom.ReadOnly    :=False;
+      mskTo.ReadOnly      :=False;
+      msk_date.ReadOnly :=True;
+      msk_date.Enabled  :=False;
+   end;
+
+
+end;
+
+procedure TfrmLD4Q74.btnPrintClick(Sender: TObject);
+begin
+  inherited;
+
+     if RBtn_preveiw.Checked = True then
+     begin
+        frmLD4Q742 := TfrmLD4Q742.Create(Self);
+        frmLD4Q742.QuickRep.Preview;
+     end
+     else
+     begin
+        frmLD4Q742 := TfrmLD4Q742.Create(Self);
+        frmLD4Q742.QuickRep.Print;
+     end;
+
+end;
+
+Procedure TfrmLD4Q74.Hangmok_Set;
+Var I, J, K : Integer;
+Begin
+      Inherited;
+//PRofile Reading
+      With qryProfile do
+         Begin
+            Close;
+//장비
+            ParamByName('In_Cod_Pf').AsString := qryGumgin.FieldByName('Cod_jangbi').AsString;
+            Open;
+            For I := 1 To Recordcount Do
+               Begin
+                  sHangmok := sHangmok + FieldByName('Cod_hm').AsString;
+                  Next;
+               End;
+            Close;
+//혈액
+            ParamByName('In_Cod_Pf').AsString := qryGumgin.FieldByName('Cod_Hul').AsString;
+            Open;
+            For I := 1 To Recordcount Do
+               Begin
+                  sHangmok := sHangmok + FieldByName('Cod_hm').AsString;
+                  Next;
+               End;
+            Close;
+//Cancer
+            ParamByName('In_Cod_Pf').AsString := qryGumgin.FieldByName('Cod_Cancer').AsString;
+            Open;
+            For I := 1 To Recordcount Do
+                Begin
+                   sHangmok := sHangmok + FieldByName('Cod_hm').AsString;
+                   Next;
+                End;
+             Close;
+         End;
+//추가코드
+         sHangmok := sHangmok + qryGumgin.FieldByName('Cod_chuga').AsString;
+//특검
+         If qryGumgin.FieldByName('Gubn_tkgm').AsString <> '' Then
+            With qryTkgum Do
+               Begin
+                  Close;
+                  ParamByName('In_Cod_jisa').AsString := qryGumgin.FieldByname('Cod_jisa').AsString;
+                  ParamByName('In_Dat_gmgn').AsString := qryGumgin.FieldByname('DaT_gmgn').AsString;
+                  ParamByName('In_NuM_Jumin').AsString := qryGumgin.FieldByname('NuM_Jumin').AsString;
+                  Open;
+                  If RecordCount > 0 Then
+                     Begin
+                        I := Length(FieldByName('Cod_prf').AsString);
+                        J := Round(I / 4);
+                        For K := 0 To J - 1 Do
+                           Begin
+                              With qryProfile do
+//특검 Profile
+                                 Begin
+                                    Close;
+                                    ParamByName('In_Cod_Pf').AsString := Copy(qryTkgum.FieldByName('Cod_Prf').AsString,J * 4 + 1, 4);
+                                    Open;
+                                    For I := 1 To Recordcount Do
+                                       Begin
+                                          sHangmok := sHangmok + FieldByName('Cod_hm').AsString;
+                                          Next;
+                                       End;
+                                    Close;
+                                 End;
+                           End;
+                      End;
+                   sHangmok := sHangmok + FieldByName('Cod_chuga').AsString;
+                   Close;
+                End;
+End;
+
+procedure TfrmLD4Q74.Ck_NewClick(Sender: TObject);
+begin
+  inherited;
+
+      grdMaster.Visible := False;
+      grd_New.Visible   := True;
+
+end;
+
+
+end.

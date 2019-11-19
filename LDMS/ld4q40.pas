@@ -1,0 +1,491 @@
+//==============================================================================
+// 프로그램 설명 : 분주별 결과 미입력LIST
+// 시스템        : 통합검진
+// 수정일자      : 2011.10.31
+// 수정자        : 송재호
+// 수정내용      :
+// 참고사항      :
+//==============================================================================
+unit LD4Q40;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  ORSingle, Menus, Buttons, ComCtrls, ToolWin, Db, DBTables, Grids, DBGrids,
+  Grids_ts, TSGrid, ExtCtrls, StdCtrls, Mask, DateEdit, DdeMan, Gauges,
+  QuickRpt,ComObj;
+
+type
+  TfrmLD4Q40 = class(TfrmSingle)
+    grdMaster: TtsGrid;
+    pnlCond: TPanel;
+    qry_gumgin: TQuery;
+    Label7: TLabel;
+    cmbJisa: TComboBox;
+    Label2: TLabel;
+    btnBdate: TSpeedButton;
+    msk_Bgmgn: TDateEdit;
+    qry_Hangmok: TQuery;
+    qry_gulkwa: TQuery;
+    RBtn_preveiw: TRadioButton;
+    RadioButton2: TRadioButton;
+    qryNo_hangmok: TQuery;
+    qryTkgum: TQuery;
+    qryPf_hm: TQuery;
+    Gride: TGauge;
+    Label4: TLabel;
+    mskFrom: TMaskEdit;
+    Label6: TLabel;
+    mskTo: TMaskEdit;
+    Label1: TLabel;
+    Label3: TLabel;
+    Label5: TLabel;
+    Label8: TLabel;
+    Label9: TLabel;
+    SBut_Excel: TSpeedButton;
+    Gauge2: TGauge;
+    procedure FormCreate(Sender: TObject);
+    procedure grdMasterCellLoaded(Sender: TObject; DataCol,
+      DataRow: Integer; var Value: Variant);
+    procedure btnQueryClick(Sender: TObject);
+    procedure UP_Click(Sender: TObject);
+    procedure btnPrintClick(Sender: TObject);
+    procedure SBut_ExcelClick(Sender: TObject);
+  private
+    { Private declarations }
+    // Grid와 연관된 Variant 변수 선언
+    UV_vHangmok, UV_vNum_samp, UV_vNum_bunju : Variant;
+    iRecordCount : integer;
+
+    // 공통적으로 사용하는 함수(이름을 동일하게 사용)
+    procedure UP_VarMemSet(iLength : Integer);
+    function  UF_Condition : Boolean;
+    function  UF_No_Hangmok(sDate, sGubun : String; iYh : Integer): String;
+  public
+    { Public declarations }
+  end;
+
+var
+  frmLD4Q40: TfrmLD4Q40;
+
+implementation
+
+uses ZZFunc, ZZMenu, ZZComm, MdmsFunc, LD4Q401;
+
+{$R *.DFM}
+
+procedure TfrmLD4Q40.UP_VarMemSet(iLength : Integer);
+begin
+   // Variant Memory Allocation
+   if iLength = 0 then
+   begin
+      // Variant변수를 사용하기 위해서 생성
+      UV_vHangmok   := VarArrayCreate([0, 0], varOleStr);
+      UV_vNum_samp := VarArrayCreate([0, 0], varOleStr);
+      UV_vNum_bunju := VarArrayCreate([0, 0], varOleStr);
+  end
+   else
+   begin
+      // 이미 생성된 변수들의 크기를 조정
+      VarArrayRedim(UV_vHangmok,   iLength);
+      VarArrayRedim(UV_vNum_samp,  iLength);
+      VarArrayRedim(UV_vNum_bunju, iLength);
+   end;
+end;
+
+function TfrmLD4Q40.UF_Condition : Boolean;
+begin
+   Result := True;
+
+   // 조회조건중 필수항목이 입력되었는지 Check
+   if msk_Bgmgn.Text = '' then
+   begin
+      GF_MsgBox('Warning', 'CONDITION');
+      Result := False;
+   end;
+end;
+
+procedure TfrmLD4Q40.FormCreate(Sender: TObject);
+begin
+   inherited;
+   UP_VarMemSet(0);
+   // 지사가 전체일 경우 지사를 Combo에 보여줌
+   GP_ComboJisa(cmbjisa);
+
+   // Default로 본사(15)를 선택
+   GP_ComboDisplay(cmbjisa, copy(GV_sUserId,1,2), 2);
+
+   msk_Bgmgn.Text := dateTostr(date);
+end;
+
+procedure TfrmLD4Q40.grdMasterCellLoaded(Sender: TObject; DataCol,
+  DataRow: Integer; var Value: Variant);
+begin
+   inherited;
+   // 자룔를 화면에 조회
+   case DataCol of
+      1 : Value := UV_vNum_bunju[DataRow-1];
+      2 : Value := UV_vNum_samp[DataRow-1];
+      3 : Value := UV_vHangmok[DataRow-1];
+   end;
+end;
+
+procedure TfrmLD4Q40.btnQueryClick(Sender: TObject);
+var index, i, j, iRet : Integer;
+    sSelect, sWhere, sOrderBy, sCod_hm, cod_name : String;
+    vCod_chuga, vCod_totyh : Variant;
+begin
+   inherited;
+   sSelect := ''; sWhere := ''; sOrderBy := ''; 
+   // 조회조건 Check
+   if not UF_Condition then exit;
+
+   // Grid 초기화
+   grdMaster.Rows := 0;
+   UP_VarMemSet(0);
+   with qry_gumgin do
+   begin
+      // SQL문 생성
+      Close;
+      sSelect := 'select a.cod_jisa, a.num_id, a.dat_gmgn,a.Desc_name, a.num_samp, a.gubn_nsyh, a.gubn_adyh, a.gubn_agyh, a.gubn_lfyh, a.cod_hul, ';
+      sSelect := sSelect + ' a.cod_jangbi, a.cod_cancer, a.cod_chuga, a.gubn_nosin, a.gubn_adult, a.gubn_agab, a.gubn_life, ';
+      sSelect := sSelect + ' b.cod_bjjs, b.num_bunju From Gumgin a ';
+      sSelect := sSelect + ' inner join bunju b ';
+      sSelect := sSelect + ' on a.cod_jisa = b.cod_jisa ';
+      sSelect := sSelect + ' and a.num_id = b.num_id ';
+      sSelect := sSelect + ' and a.dat_gmgn = b.dat_gmgn ';
+
+      sWhere := ' WHERE b.Cod_bjjs = ''' + Copy(cmbJisa.Text,1,2) + '''';
+      sWhere := sWhere + ' AND  b.Dat_Bunju = ''' + msk_Bgmgn.Text + ''' ';
+
+      if Trim(mskFrom.Text) <> '' then
+         sWhere := sWhere + ' AND b.num_bunju >= ''' + mskFrom.Text + '''';
+      if Trim(mskTo.Text) <> '' then
+         sWhere := sWhere + ' AND b.num_bunju <= ''' + mskTo.Text + '''';
+
+      sOrderBy := ' ORDER BY b.num_bunju ';
+
+      SQL.Clear;
+      SQL.Add(sSelect + sWhere + sOrderBy);
+      Open;
+
+      Gride.MaxValue := RecordCount;
+      Index := 0;
+      if RecordCount > 0 then
+      begin
+         GP_query_log(qry_gumgin, 'LD4Q40', 'Q', 'N');
+         For i := 1 to RecordCount do
+         begin
+            UP_VarMemSet(index);
+
+            //검사항목추출
+            sCod_hm := '';
+            if FieldByName('cod_hul').AsString <> '' then
+            begin
+               qryPf_hm.Active := False;
+               qryPf_hm.ParamByName('Cod_Pf').AsString := FieldByName('cod_hul').AsString;
+               qryPf_hm.Active := True;
+               if qryPf_hm.RecordCount > 0 then
+               begin
+                  while not qryPf_hm.Eof do
+                  begin
+                     sCod_hm := sCod_hm + qryPf_hm.FieldByName('COD_HM').AsString;
+                     qryPf_hm.Next;
+                  end;
+               end;
+            end;
+
+            if FieldByName('cod_cancer').AsString <> '' then
+            begin
+               qryPf_hm.Active := False;
+               qryPf_hm.ParamByName('Cod_Pf').AsString := FieldByName('cod_cancer').AsString;
+               qryPf_hm.Active := True;
+
+               if qryPf_hm.RecordCount > 0 then
+               begin
+                  while not qryPf_hm.Eof do
+                  begin
+                     sCod_hm := sCod_hm + qryPf_hm.FieldByName('COD_HM').AsString;
+                     qryPf_hm.Next;
+                  end;
+               end;
+            end;
+
+            if FieldByName('cod_jangbi').AsString <> '' then
+            begin
+               qryPf_hm.Active := False;
+               qryPf_hm.ParamByName('Cod_Pf').AsString := FieldByName('cod_jangbi').AsString;
+               qryPf_hm.Active := True;
+
+               if qryPf_hm.RecordCount > 0 then
+               begin
+                  while not qryPf_hm.Eof do
+                  begin
+                     sCod_hm := sCod_hm + qryPf_hm.FieldByName('COD_HM').AsString;
+                     qryPf_hm.Next;
+                  end;
+               end;
+            end;
+            iRet := GF_MulToSingle(FieldByName('cod_chuga').AsString, 4, vCod_chuga);
+            for j := 0 to iRet-1 do
+               sCod_hm := sCod_hm + vCod_chuga[j];
+
+            // 노신, 성인병, 간염에 대한 검사항목 추출
+            cod_name := '';
+            // 노신유형Display
+            if FieldByName('gubn_nosin').AsString = '1' then
+               cod_name := cod_name + UF_No_Hangmok(copy(GV_sToday,1,4), '1', FieldByName('gubn_nsyh').AsInteger);
+            //성인병유형Display
+            if FieldByName('gubn_adult').AsString = '1' then
+               cod_name := cod_name + UF_No_Hangmok(copy(GV_sToday,1,4), '4', FieldByName('gubn_adyh').AsInteger);
+            //간염유형Display
+            if FieldByName('gubn_agab').AsString = '1' then
+               cod_name := cod_name + UF_No_Hangmok(copy(GV_sToday,1,4), '5', FieldByName('gubn_agyh').AsInteger);
+            //생애전환기유형Display
+            if FieldByName('gubn_life').AsString = '1' then
+               cod_name := cod_name + UF_No_Hangmok(copy(GV_sToday,1,4), '7', FieldByName('gubn_lfyh').AsInteger);
+
+            iRet := GF_MulToSingle(cod_name, 4, vCod_totyh);
+            for j := 0 to iRet-1 do
+               sCod_hm := sCod_hm + vCod_totyh[j];
+
+            if (pos('C049', sCod_hm) > 0) OR (pos('E001', sCod_hm) > 0) OR (pos('E002', sCod_hm) > 0) OR
+               (pos('E003', sCod_hm) > 0) OR (pos('E040', sCod_hm) > 0) OR (pos('T002', sCod_hm) > 0) OR (pos('T011', sCod_hm) > 0) OR
+               (pos('T037', sCod_hm) > 0) OR (pos('T006', sCod_hm) > 0) OR (pos('T007', sCod_hm) > 0) OR (pos('E015', sCod_hm) > 0) OR
+               (pos('TT01', sCod_hm) > 0) OR (pos('TT02', sCod_hm) > 0) then
+            begin
+               // RIA
+               if (pos('C049', sCod_hm) > 0) OR (pos('E001', sCod_hm) > 0) OR (pos('E002', sCod_hm) > 0) OR
+                  (pos('E003', sCod_hm) > 0) OR (pos('E040', sCod_hm) > 0) OR (pos('T002', sCod_hm) > 0) OR (pos('T011', sCod_hm) > 0) OR
+                  (pos('T037', sCod_hm) > 0) then
+               begin
+                  qry_gulkwa.Active := False;
+                  qry_gulkwa.ParamByName('cod_bjjs').AsString   := Copy(cmbJisa.Text,1,2);
+                  qry_gulkwa.ParamByName('num_id').AsString     := FieldByName('num_id').AsString;
+                  qry_gulkwa.ParamByName('dat_gmgn').AsString   := FieldByName('dat_gmgn').AsString;
+                  qry_gulkwa.ParamByName('gubn_part').AsString  := '04';
+                  qry_gulkwa.Active := True;
+                  if qry_gulkwa.RecordCount > 0 then
+                  begin
+                     if (pos('C049', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 7, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'Ferritin(C049), ';
+                     if (pos('E001', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 13, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'T3(E001), ';
+                     if (pos('E002', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 19, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'T4(E002), ';
+                     if (pos('E003', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 25, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'TSH(E003), ';
+                     if (pos('E040', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 61, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'CYFRA(E040), ';
+                     if (pos('T002', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 145, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'CEA(T002), ';
+                     if (pos('T011', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 157, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'PSA(남자)(T011), ';
+                     if (pos('T037', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 175, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'CA15-3(여자)(T037), ';
+                  end;
+               end;
+               // EIA
+               if (pos('T006', sCod_hm) > 0) OR (pos('T007', sCod_hm) > 0) then
+               begin
+                  qry_gulkwa.Active := False;
+                  qry_gulkwa.ParamByName('cod_bjjs').AsString   := Copy(cmbJisa.Text,1,2);
+                  qry_gulkwa.ParamByName('num_id').AsString     := FieldByName('num_id').AsString;
+                  qry_gulkwa.ParamByName('dat_gmgn').AsString   := FieldByName('dat_gmgn').AsString;
+                  qry_gulkwa.ParamByName('gubn_part').AsString  := '05';
+                  qry_gulkwa.Active := True;
+                  if qry_gulkwa.RecordCount > 0 then
+                  begin
+                     if (pos('T006', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 127, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'CA19-9(T006), ';
+                     if (pos('T007', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 115, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'CA125II(여자)(T007), ';
+                  end;
+               end;
+               // 혈청
+               if (pos('TT01', sCod_hm) > 0) then
+               begin
+                  qry_gulkwa.Active := False;
+                  qry_gulkwa.ParamByName('cod_bjjs').AsString   := Copy(cmbJisa.Text,1,2);
+                  qry_gulkwa.ParamByName('num_id').AsString     := FieldByName('num_id').AsString;
+                  qry_gulkwa.ParamByName('dat_gmgn').AsString   := FieldByName('dat_gmgn').AsString;
+                  qry_gulkwa.ParamByName('gubn_part').AsString  := '07';
+                  qry_gulkwa.Active := True;
+                  if qry_gulkwa.RecordCount > 0 then
+                  For j := 1 to length(sCod_hm) div 4 do
+                  begin
+                     if ((copy(sCod_hm,(j*4)-3, 4)) = 'TT01') AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 85, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'AFP(E)(TT01), ';
+                     
+                  end
+                  else  UV_vHangmok[index] := UV_vHangmok[index] + 'AFP(E)(TT01), ';
+               end;
+
+               if (pos('TT02', sCod_hm) > 0) then
+               begin
+                  qry_gulkwa.Active := False;
+                  qry_gulkwa.ParamByName('cod_bjjs').AsString   := Copy(cmbJisa.Text,1,2);
+                  qry_gulkwa.ParamByName('num_id').AsString     := FieldByName('num_id').AsString;
+                  qry_gulkwa.ParamByName('dat_gmgn').AsString   := FieldByName('dat_gmgn').AsString;
+                  qry_gulkwa.ParamByName('gubn_part').AsString  := '07';
+                  qry_gulkwa.Active := True;
+                  if qry_gulkwa.RecordCount > 0 then
+                  begin
+                     if (pos('TT02', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 169, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'AFP(E)-수치(TT02), ';
+                  end
+                  else UV_vHangmok[index] := UV_vHangmok[index] + 'AFP(E)-수치(TT02), ';
+               end;
+               // 기타결과
+               if (pos('E015', sCod_hm) > 0) then
+               begin
+                  qry_gulkwa.Active := False;
+                  qry_gulkwa.ParamByName('cod_bjjs').AsString   := Copy(cmbJisa.Text,1,2);
+                  qry_gulkwa.ParamByName('num_id').AsString     := FieldByName('num_id').AsString;
+                  qry_gulkwa.ParamByName('dat_gmgn').AsString   := FieldByName('dat_gmgn').AsString;
+                  qry_gulkwa.ParamByName('gubn_part').AsString  := '08';
+                  qry_gulkwa.Active := True;
+                  if qry_gulkwa.RecordCount > 0 then
+                  begin
+                     if (pos('E015', sCod_hm) > 0) AND (trim(copy(qry_gulkwa.FieldByName('desc_glkwa1').AsString, 151, 6)) = '') then
+                        UV_vHangmok[index] := UV_vHangmok[index] + 'FreeT4(E015), ';
+                  end
+                  Else  UV_vHangmok[index] := UV_vHangmok[index] + 'FreeT4(E015), ';
+               end;
+            end;
+            qry_gulkwa.Active := False;
+
+            if UV_vHangmok[index] <> '' then
+            begin
+               UV_vNum_bunju[index] := FieldByName('num_bunju').AsString;
+               UV_vNum_samp [index] := FieldByName('num_samp').AsString;
+               Inc(index);
+            end;
+
+            next;
+         end;
+         Gride.Progress := RecordCount;
+      end
+      else
+      begin
+         // 자료가 없음을 표시
+         GF_MsgBox('Information', 'NODATA');
+         exit;
+      end;  // if RecordCount > 0 then
+      Close;
+   end; // qryGulkwa
+
+   // Grid에 자료를 할당
+   grdMaster.Rows := index;
+   
+   // Query Mode & Msg
+   if Sender = btnQuery then UP_SetMode('QUERY');
+end;
+
+procedure TfrmLD4Q40.UP_Click(Sender: TObject);
+begin
+   inherited;
+   if Sender = btnBdate then GF_CalendarClick(msk_Bgmgn);
+end;
+
+function  TfrmLD4Q40.UF_No_Hangmok(sDate, sGubun : String; iYh : Integer): String;
+begin
+   Result := '';
+   with qryNo_hangmok do
+   begin
+      Active := False;
+      ParamByName('dat_apply').AsString   := sDate;
+      ParamByName('gubn_code').AsString   := sGubun;
+      ParamByName('gubn_yh').AsInteger    := iYh;
+      Active := True;
+      if RecordCount > 0 then
+      begin
+         Result := FieldByName('desc_hul').AsString;
+         Result := Result + FieldByName('desc_jangbi').AsString;
+      end;
+      Active := False;
+   end;
+end;
+
+procedure TfrmLD4Q40.btnPrintClick(Sender: TObject);
+begin
+  inherited;
+  if Sender = btnPrint then
+  begin
+     if RBtn_preveiw.Checked = True then
+     begin
+        frmLD4Q401 := TfrmLD4Q401.Create(Self);
+        frmLD4Q401.QuickRep.Preview;
+        frmLD4Q401.free;
+     end
+     else
+     begin
+        frmLD4Q401 := TfrmLD4Q401.Create(Self);
+        frmLD4Q401.QuickRep.Print;
+     end;
+  end;
+end;
+
+
+procedure TfrmLD4Q40.SBut_ExcelClick(Sender: TObject);
+var
+  XL,WorkBook: Variant;
+  i : integer;
+  ArrV3 : OleVariant;
+  Row,Col : Integer;
+begin
+   inherited;
+   Screen.Cursor:= crHourGlass;
+   try
+      XL:= CreateOleObject('Excel.Application');
+   except
+      Application.MessageBox('Excel이 설치되어 있지 않습니다. 먼저 Excel을 설치하세요.',
+                             '오류', MB_OK or MB_ICONERROR);
+      Screen.Cursor  := crDefault;
+      Exit;
+   end;
+
+   Gauge2.MaxValue := grdMaster.Rows;
+   Gauge2.Progress := 1;
+   Application.ProcessMessages;
+   try
+      WorkBook := XL.WorkBooks.Add;
+
+      //Data import
+      ArrV3 := VarArrayCreate([0, grdMaster.Rows + 1, 0, grdMaster.Cols], varOleStr);
+
+      I := 0;
+      for Row := 0 to grdMaster.Rows + 1 do
+      begin
+         if Row = 0 then
+         begin
+            for Col := 0 to grdMaster.Cols - 1 do
+               ArrV3[Row, Col] := grdMaster.Col[Col + 1].Heading;
+         end
+         else
+         begin
+            for Col := 0 to grdMaster.Cols do
+            begin
+               Application.ProcessMessages;
+               ArrV3[Row, Col] := grdMaster.cell[Col + 1, Row];
+            end;
+         end;
+         Gauge2.Progress:= i;
+         Application.ProcessMessages;
+         Inc(I);
+      end;
+      XL.Range[XL.Cells[1, 1], XL.Cells[grdMaster.Rows + 1, grdMaster.Cols]].Value := ArrV3;
+
+
+      XL.DisplayAlerts := False;
+      XL.Visible:= True;
+   finally
+      Application.ProcessMessages;
+      Screen.Cursor  := crDefault;
+   end;
+
+end;
+
+
+end.

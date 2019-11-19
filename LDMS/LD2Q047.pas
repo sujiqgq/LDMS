@@ -1,0 +1,215 @@
+unit LD2Q047;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  Qrctrls, QuickRpt, ExtCtrls;
+
+type
+  TfrmLD2Q047 = class(TForm)
+    QuickRep: TQuickRep;
+    QRBand4: TQRBand;
+    QRBand3: TQRBand;
+    QRShape27: TQRShape;
+    QRShape37: TQRShape;
+    QRShape38: TQRShape;
+    QRShape39: TQRShape;
+    QRShape40: TQRShape;
+    QRShape41: TQRShape;
+    QRLabel24: TQRLabel;
+    QRLabel25: TQRLabel;
+    QRLabel26: TQRLabel;
+    QRLabel27: TQRLabel;
+    QRLabel29: TQRLabel;
+    QRLabel30: TQRLabel;
+    QRLabel32: TQRLabel;
+    QRShape42: TQRShape;
+    QRShape43: TQRShape;
+    QRShape45: TQRShape;
+    QRShape46: TQRShape;
+    QRShape47: TQRShape;
+    QRShape48: TQRShape;
+    QRShape1: TQRShape;
+    QRLabel6: TQRLabel;
+    QRShape4: TQRShape;
+    QRLabel7: TQRLabel;
+    QRShape11: TQRShape;
+    QRShape14: TQRShape;
+    QRLabel8: TQRLabel;
+    QRLabel18: TQRLabel;
+    QRShape18: TQRShape;
+    QRLabel19: TQRLabel;
+    QRShape28: TQRShape;
+    QRLabel22: TQRLabel;
+    QRLabel28: TQRLabel;
+    QRShape32: TQRShape;
+    QRShape33: TQRShape;
+    QRShape44: TQRShape;
+    QRLabel37: TQRLabel;
+    QRShape49: TQRShape;
+    QRLabel39: TQRLabel;
+    QRLabel1: TQRLabel;
+    QRLabel5: TQRLabel;
+    Qrl_Date: TQRLabel;
+    QRLabel11: TQRLabel;
+    QRLabel10: TQRLabel;
+    QRLabel9: TQRLabel;
+    QRLabel3: TQRLabel;
+    QRLabel12: TQRLabel;
+    QRLabel15: TQRLabel;
+    QRLabel17: TQRLabel;
+    QRLabel16: TQRLabel;
+    QRLabel34: TQRLabel;
+    QRLabel36: TQRLabel;
+    QRLabel38: TQRLabel;
+    QRLabel40: TQRLabel;
+    QRSysData2: TQRSysData;
+    QRShape3: TQRShape;
+    QRLabel14: TQRLabel;
+    QRLabel23: TQRLabel;
+    QRLabel35: TQRLabel;
+    QRLabel2: TQRLabel;
+    QRLabel4: TQRLabel;
+    QRLabel13: TQRLabel;
+    QRLabel31: TQRLabel;
+    QRLabel20: TQRLabel;
+    QRLabel21: TQRLabel;
+    QRShape5: TQRShape;
+    QRBand2: TQRBand;
+    QRShape13: TQRShape;
+    QRShape12: TQRShape;
+    QRShape16: TQRShape;
+    QRShape20: TQRShape;
+    QRShape22: TQRShape;
+    QRShape23: TQRShape;
+    QRShape25: TQRShape;
+    QRShape26: TQRShape;
+    QRL_Bunju: TQRLabel;
+    QRL_T021: TQRLabel;
+    QRL_T022: TQRLabel;
+    QRL_T023: TQRLabel;
+    QRL_C071: TQRLabel;
+    QRL_E047: TQRLabel;
+    QRL_T024: TQRLabel;
+    QRShape2: TQRShape;
+    QRShape6: TQRShape;
+    QRShape7: TQRShape;
+    QRL_S077: TQRLabel;
+    QRL_S076: TQRLabel;
+    QRShape9: TQRShape;
+    QRShape10: TQRShape;
+    QRShape15: TQRShape;
+    QRShape17: TQRShape;
+    QRL_Name: TQRLabel;
+    QRL_Jumin: TQRLabel;
+    QRShape21: TQRShape;
+    QRL_No: TQRLabel;
+    QRShape29: TQRShape;
+    QRL_S078: TQRLabel;
+    QRL_E012: TQRLabel;
+    QRShape34: TQRShape;
+    QRShape35: TQRShape;
+    QRShape36: TQRShape;
+    QRL_S085: TQRLabel;
+    QRShape50: TQRShape;
+    QRL_SE26: TQRLabel;
+    QRShape51: TQRShape;
+    QRL_samp: TQRLabel;
+    QRL_SE27: TQRLabel;
+    QRL_SE28: TQRLabel;
+    QRL_SE29: TQRLabel;
+    QRL_S095: TQRLabel;
+    QRShape8: TQRShape;
+    QRShape19: TQRShape;
+    QRShape24: TQRShape;
+    QRLabel33: TQRLabel;
+    QRLabel41: TQRLabel;
+    QRL_T059: TQRLabel;
+    procedure QuickRepNeedData(Sender: TObject; var MoreData: Boolean);
+    procedure QuickRepBeforePrint(Sender: TCustomQuickRep;
+      var PrintReport: Boolean);
+
+  private
+    UV_iCount, sRec, cRow, iRow : Integer;
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  frmLD2Q047: TfrmLD2Q047;
+
+implementation
+
+uses ZZFunc, ZZMenu, ZZComm, MdmsFunc, LD2Q04;
+
+{$R *.DFM}
+
+procedure TfrmLD2Q047.QuickRepNeedData(Sender: TObject;
+  var MoreData: Boolean);
+begin
+   inherited;
+
+   with frmLD2Q04.grdMaster do
+   begin
+      // 자료가 없을경우의 처리
+      if Rows = 0 then
+      begin
+         MoreData := False;
+         exit;
+      end;
+
+      // 출력자료 전달
+      UV_iCount := UV_iCount + 1;
+
+      QRL_No.Caption    := copy(Cell[  1,UV_iCount],1, pos('/',Cell[  1,UV_iCount])-1);
+    //  QRL_Jisa.Caption  := Cell[ 2,UV_iCount];
+      QRL_Bunju.Caption := Cell[ 3,UV_iCount];
+      if Length(Cell[ 4,UV_iCount]) >= 8 then
+         QRL_Name.Caption  :=  copy(Cell[ 4,UV_iCount],1,8)
+      else
+         QRL_Name.Caption  := Cell[ 4,UV_iCount];
+      QRL_Jumin.Caption := Cell[ 5,UV_iCount];
+
+      QRL_T021.Caption  := Cell[62,UV_iCount];
+      QRL_T022.Caption  := Cell[63,UV_iCount];
+      QRL_T023.Caption  := Cell[64,UV_iCount];
+      QRL_T024.Caption  := Cell[65,UV_iCount];
+      QRL_C071.Caption  := Cell[66,UV_iCount];
+      QRL_E047.Caption  := Cell[67,UV_iCount];
+      QRL_S076.Caption  := Cell[68,UV_iCount];
+      QRL_S077.Caption  := Cell[69,UV_iCount];
+      QRL_S078.Caption  := Cell[70,UV_iCount];
+      QRL_E012.Caption  := Cell[71,UV_iCount];
+      QRL_S085.Caption  := Cell[72,UV_iCount];
+      QRL_SE26.Caption  := Cell[73,UV_iCount];
+      QRL_SE27.Caption  := Cell[74,UV_iCount];
+      QRL_SE28.Caption  := Cell[75,UV_iCount];
+      QRL_SE29.Caption  := Cell[76,UV_iCount];
+      QRL_S095.Caption  := Cell[77,UV_iCount];
+      QRL_T059.Caption  := Cell[102,UV_iCount];
+
+//      QRL_Desc_name.Caption  := Cell[115,UV_iCount];
+      QRL_samp.Caption       := Cell[147,UV_iCount];
+
+      if UV_iCount <= Rows then
+         MoreData := True
+      else
+         MoreData := False;
+   end;
+
+end;
+
+procedure TfrmLD2Q047.QuickRepBeforePrint(Sender: TCustomQuickRep;
+  var PrintReport: Boolean);
+begin
+   inherited;
+   QRL_date.Caption := copy(frmLD2Q04.EdtBDate.Text,1,4) + '년'  +
+                       copy(frmLD2Q04.EdtBDate.Text,5,2) + '월'  +
+                       copy(frmLD2Q04.EdtBDate.Text,7,2) + '일';
+   UV_iCount := 0;
+end;
+
+
+end.

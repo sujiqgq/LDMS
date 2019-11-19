@@ -1,0 +1,343 @@
+//==============================================================================
+// 프로그램 설명 : 검사항목분주현황
+// 시스템        : 분석관리
+// 수정일자      : 2015.02.06
+// 수정자        : 구수정
+// 수정내용      :
+// 참고사항      :
+//==============================================================================
+// 수정일자      : 2015.02.13
+// 수정자        : 곽윤설
+// 수정내용      :
+// 참고사항      :
+//==============================================================================
+
+unit LD9Q02;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  ORSingle, Menus, Buttons, ComCtrls, ToolWin, Db, DBTables, Grids, DBGrids,
+  Grids_ts, TSGrid, ExtCtrls, StdCtrls, Mask, DateEdit, DdeMan, Gauges,
+  QuickRpt;
+
+type
+  TfrmLD9Q02 = class(TfrmSingle)
+    grdMaster: TtsGrid;
+    pnlCond: TPanel;
+    cmbJisa: TComboBox;
+    qryBunju: TQuery;
+    Label2: TLabel;
+    mskSDate: TDateEdit;
+    btnSdate: TSpeedButton;
+    qryTkgum: TQuery;
+    qryNo_hangmok: TQuery;
+    qryPf_hm: TQuery;
+    qryProfile: TQuery;
+    qry_LdmsHM_GR: TQuery;
+    qry_LdmsHm: TQuery;
+    RG_jisa: TRadioGroup;
+    mskEDate: TDateEdit;
+    btnEdate: TSpeedButton;
+    Gauge: TGauge;
+    qryU_Glkwa: TQuery;
+    btn_delete: TButton;
+    Label1: TLabel;
+    qryPart01: TQuery;
+    procedure FormCreate(Sender: TObject);
+    procedure grdMasterCellLoaded(Sender: TObject; DataCol,
+      DataRow: Integer; var Value: Variant);
+    procedure btnQueryClick(Sender: TObject);
+    procedure UP_Click(Sender: TObject);
+    procedure MouseWheelHandler(var Message: TMessage); override;
+    procedure grdMasterRowChanged(Sender: TObject; OldRow,
+      NewRow: Integer);
+    procedure btn_deleteClick(Sender: TObject);
+  private
+    { Private declarations }
+    // Grid와 연관된 Variant 변수 선언
+    UV_vCod_Jisa, UV_vNum_id, UV_vDat_gmgn, UV_vDesc_name, UV_vNum_jumin, UV_vCod_dc, UV_vDesc_dc,
+    UV_vDesc_CbcList, UV_vDesc_Gulkwa, UV_vH035, UV_vCod_bjjs, UV_vDat_bunju, UV_vNum_bunju, UV_vCheck : Variant;
+
+    // 공통적으로 사용하는 함수(이름을 동일하게 사용)
+    procedure UP_VarMemSet(iLength : Integer);
+
+  public
+    { Public declarations }
+  end;
+
+var
+  frmLD9Q02: TfrmLD9Q02;
+
+implementation
+
+uses ZZFunc, ZZMenu, ZZComm, MdmsFunc;
+
+{$R *.DFM}
+
+procedure TfrmLD9Q02.MouseWheelHandler(var Message: TMessage);  //수정
+begin
+   if Message.msg = WM_MOUSEWHEEL then begin
+      if (ActiveControl is Ttsgrid) then begin //수정
+         if Message.wParam > 0 then
+         keybd_event(VK_UP, VK_UP, 0, 0)
+         else if Message.wParam < 0 then
+         keybd_event(VK_DOWN, VK_DOWN, 0, 0);
+         Application.ProcessMessages;//추가
+         grdMaster.Refresh; //수정
+      end;
+   end;
+end;
+
+procedure TfrmLD9Q02.UP_VarMemSet(iLength : Integer);
+var
+   i : Integer;
+begin
+   // Variant Memory Allocation
+   if iLength = 0 then
+   begin
+      // Variant변수를 사용하기 위해서 생성
+    UV_vCod_Jisa     := VarArrayCreate([0, 0], varOleStr);
+    UV_vNum_id       := VarArrayCreate([0, 0], varOleStr);
+    UV_vDat_gmgn     := VarArrayCreate([0, 0], varOleStr);
+    UV_vDesc_name    := VarArrayCreate([0, 0], varOleStr);
+    UV_vNum_jumin    := VarArrayCreate([0, 0], varOleStr);
+    UV_vCod_dc       := VarArrayCreate([0, 0], varOleStr);
+    UV_vDesc_dc      := VarArrayCreate([0, 0], varOleStr);
+    UV_vDesc_CbcList := VarArrayCreate([0, 0], varOleStr);
+    UV_vDesc_Gulkwa  := VarArrayCreate([0, 0], varOleStr);
+    UV_vH035         := VarArrayCreate([0, 0], varOleStr);
+    UV_vCod_bjjs     := VarArrayCreate([0, 0], varOleStr);
+    UV_vDat_bunju    := VarArrayCreate([0, 0], varOleStr);
+    UV_vNum_bunju    := VarArrayCreate([0, 0], varOleStr);
+    UV_vCheck        := VarArrayCreate([0, 0], varOleStr);
+   end
+   else
+   begin
+      // 이미 생성된 변수들의 크기를 조정
+      VarArrayRedim(UV_vCod_Jisa,     iLength);
+      VarArrayRedim(UV_vNum_id,       iLength);
+      VarArrayRedim(UV_vDat_gmgn,     iLength);
+      VarArrayRedim(UV_vDesc_name,    iLength);
+      VarArrayRedim(UV_vNum_jumin,    iLength);
+      VarArrayRedim(UV_vCod_dc,       iLength);
+      VarArrayRedim(UV_vDesc_dc,      iLength);
+      VarArrayRedim(UV_vDesc_CbcList, iLength);
+      VarArrayRedim(UV_vDesc_Gulkwa,  iLength);
+      VarArrayRedim(UV_vH035,         iLength);
+      VarArrayRedim(UV_vCod_bjjs,     iLength);
+      VarArrayRedim(UV_vDat_bunju,    iLength);
+      VarArrayRedim(UV_vNum_bunju,    iLength);
+      VarArrayRedim(UV_vCheck,        iLength);
+   end;
+end;
+
+procedure TfrmLD9Q02.FormCreate(Sender: TObject);
+begin
+   inherited;
+   UP_VarMemSet(0);
+
+   // 지사가 전체일 경우 지사를 Combo에 보여줌
+   GP_ComboJisa(cmbjisa);
+   GP_ComboDisplay(cmbjisa, '61', 2);
+
+   // 오늘일자로 기본설정
+   mskSDate.Text := '20150609';
+   mskEDate.Text := '20150609';
+end;
+
+procedure TfrmLD9Q02.grdMasterCellLoaded(Sender: TObject; DataCol,
+  DataRow: Integer; var Value: Variant);
+begin
+   inherited;
+
+   // 자룔를 화면에 조회
+   case DataCol of
+      1 :  Value := UV_vCod_Jisa[DataRow-1];
+      2 :  Value := UV_vNum_id[DataRow-1];
+      3 :  Value := UV_vDat_gmgn[DataRow-1];
+      4 :  Value := UV_vDesc_name[DataRow-1];
+      5 :  Value := UV_vNum_jumin[DataRow-1];
+      6 :  Value := UV_vCod_dc[DataRow-1];
+      7 :  Value := UV_vDesc_dc[DataRow-1];
+      8 :  Value := UV_vDesc_CbcList[DataRow-1];
+      9 :  Value := UV_vDesc_Gulkwa[DataRow-1];
+     10 :  Value := UV_vH035[DataRow-1];
+
+     11 :  Value := UV_vCod_bjjs[DataRow-1];
+     12 :  Value := UV_vDat_bunju[DataRow-1];
+     13 :  Value := UV_vNum_bunju[DataRow-1];
+     14 :  Value := UV_vCheck[DataRow-1];
+   end;
+
+   if UV_vCheck[DataRow-1] = 'N' then grdMaster.RowColor[DataRow] := $00E6FFFE;
+end;
+
+procedure TfrmLD9Q02.btnQueryClick(Sender: TObject);
+var iCnt : Integer;
+    sSqlText : String;
+begin
+   inherited;
+   sSqlText := '';
+   iCnt := 0;
+
+   // Grid 초기화
+   grdMaster.Rows := 0;
+   UP_VarMemSet(0);
+
+   Gauge.Progress := 0;
+   Gauge.MinValue := 0;
+
+
+   sSqlText := ' SELECT A.cod_jisa, A.num_id, A.dat_gmgn, B.desc_name, B.num_jumin, B.cod_dc, dbo.F_GET_DANCHE_FIND(B.cod_dc) Desc_Dc, ' +
+               '        A.Cod_Bjjs, A.dat_bunju, A.num_bunju, dbo.F_GET_HUL_PART_HMFIND(A.cod_jisa,A.num_id,A.dat_gmgn,''1'',''02'') Desc_CBCHangmokList, ' +
+               '        A.desc_glkwa1, A.desc_glkwa2, A.desc_glkwa3 ' +
+               ' FROM gulkwa A WITH (NOLOCK) Inner join gumgin B WITH (NOLOCK) ON A.cod_jisa = B.Cod_jisa AND A.num_id = B.num_id AND A.dat_gmgn = B.dat_gmgn ' +
+               ' WHERE A.cod_jisa   = ''' + Copy(cmbJisa.Text,1,2) + ''' ' +
+               '  and  A.dat_bunju >= ''' + mskSDate.Text + ''' ' +
+               '  and  A.dat_bunju <= ''' + mskEDate.Text + ''' ' +
+               '  and  A.gubn_part  = ''02'' ' +
+               ' ORDER BY A.cod_bjjs, A.dat_bunju, CAST(A.num_bunju AS INT) ';
+
+   with qryBunju do
+   begin
+      // SQL문 생성
+      Close;
+      SQL.Clear;
+      SQL.Text := sSqlText;
+      Open;
+
+      Gauge.MaxValue := RecordCount;
+      if RecordCount > 0 then
+      begin
+         while Not Eof do
+         begin
+            Gauge.Progress := Gauge.Progress + 1;
+            Application.ProcessMessages;
+            
+            UP_VarMemSet(iCnt);
+
+            UV_vCod_Jisa[iCnt]     := FieldByName('cod_jisa').AsString;
+            UV_vNum_id[iCnt]       := FieldByName('num_id').AsString;
+            UV_vDat_gmgn[iCnt]     := FieldByName('dat_gmgn').AsString;
+            UV_vDesc_name[iCnt]    := FieldByName('Desc_name').AsString;
+            UV_vNum_jumin[iCnt]    := FieldByName('num_jumin').AsString;
+            UV_vCod_dc[iCnt]       := FieldByName('cod_dc').AsString;
+            UV_vDesc_dc[iCnt]      := FieldByName('desc_dc').AsString;
+            UV_vDesc_CbcList[iCnt] := FieldByName('Desc_CBCHangmokList').AsString;
+            UV_fGulkwa := '';
+            UV_fGulkwa1 := FieldByName('DESC_GLKWA1').AsString;
+            UV_fGulkwa2 := FieldByName('DESC_GLKWA2').AsString;
+            UV_fGulkwa3 := FieldByName('DESC_GLKWA3').AsString;
+            GF_HulGulkwa('2', UV_fGulkwa1, UV_fGulkwa2, UV_fGulkwa3, UV_fGulkwa);
+
+            UV_vDesc_Gulkwa[iCnt]  := (Copy(UV_fGulkwa, 1,  200));
+            UV_vH035[iCnt]         := copy(FieldByName('desc_glkwa1').AsString,175,6);
+
+            UV_vCod_bjjs[iCnt]     := FieldByName('Cod_bjjs').AsString;
+            UV_vDat_bunju[iCnt]    := FieldByName('Dat_bunju').AsString;
+            UV_vNum_bunju[iCnt]    := FieldByName('Num_bunju').AsString;
+
+            if      pos('H035',FieldByName('Desc_CBCHangmokList').AsString) > 0 then UV_vCheck[iCnt] := 'N'
+            else if Trim(copy(FieldByName('desc_glkwa1').AsString,175,6)) = ''  then UV_vCheck[iCnt] := 'N'
+            else                                                                     UV_vCheck[iCnt] := 'Y';
+
+            Inc(iCnt);
+
+            Next;
+         End;
+      end
+      else
+      begin
+         // 자료가 없음을 표시
+         GF_MsgBox('Information', 'NODATA');
+         exit;
+      end;  // if RecordCount > 0 then
+      Close;
+   end;  // with qry_gulkwa do
+
+   // Grid에 자료를 할당
+   grdMaster.Rows := iCnt;
+
+   // Query Mode & Msg
+   if Sender = btnQuery then UP_SetMode('QUERY');
+end;
+
+procedure TfrmLD9Q02.UP_Click(Sender: TObject);
+var sCode, sName : String;
+begin
+   inherited;
+   if Sender = btnSdate then GF_CalendarClick(mskSDate);
+   if Sender = btnEdate then GF_CalendarClick(mskEDate);
+end;
+
+procedure TfrmLD9Q02.grdMasterRowChanged(Sender: TObject; OldRow,
+  NewRow: Integer);
+begin
+   inherited;
+
+   // 자료가 존재하는지 Check
+   if NewRow = 0 then exit;   
+
+   // Grid Focus
+   grdMaster.SetFocus;
+
+   // Data건수 표시
+   GP_SetDataCnt(grdMaster);
+end;
+
+procedure TfrmLD9Q02.btn_deleteClick(Sender: TObject);
+var i, index, itemp : Integer;
+    Part01, sSelect, sWhere, sGroupBy, sOrderBy : String;
+begin
+  inherited;
+  sSelect := ''; sWhere := ''; sOrderBy := '';
+  i := 0;
+  index := 0;
+  if not GF_MsgBox('Confirmation', 'H028 결과 데이터 삭제를 시작하시겠습니까?') then exit;
+
+  for i := 1 to grdMaster.Rows do
+  begin
+  //결과테이블 끌어오기
+  with qryPart01 do
+   begin
+      Close;
+      qryPart01.ParamByName('cod_bjjs').AsString  := (grdMaster.Cell[11,i]);
+      qryPart01.ParamByName('dat_bunju').AsString := (grdMaster.Cell[12,i]);
+      qryPart01.ParamByName('num_bunju').AsString := (grdMaster.Cell[13,i]);
+      Open;
+
+      if qryPart01.RecordCount > 0 then
+      begin
+         Part01 := '';
+         if FieldByName('desc_glkwa1').AsString <> '' then
+         begin
+            for iTemp := 1 to 200 - Length(FieldByName('desc_glkwa1').AsString) do
+                Part01 := Part01 + ' ';
+            Part01 := FieldByName('desc_glkwa1').AsString + Part01;
+         end
+         else
+         begin
+            for iTemp := 1 to 2 do
+                Part01 := Part01 + '                                                                                                    ';
+         end;
+     end;
+     // APTT
+     Part01 := Copy(Part01, 1, 174) + GF_RPad('', 6, ' ') + Copy(Part01, 181, Length(Part01));
+     With qryU_Glkwa Do
+     if UV_vCheck[i-1] = 'Y' then
+     begin
+        ParamByName('Cod_bjjs').AsString    := Copy(cmbJisa.Text,1,2);
+        ParamByName('num_id').AsString      := (grdMaster.Cell[2,i]);
+        ParamByName('dat_bunju').AsString   := (grdMaster.Cell[12,i]);
+        ParamByName('num_bunju').AsString   := (grdMaster.Cell[13,i]);
+        ParamByName('gubn_part').AsString   := '02';
+        ParamByName('desc_glkwa1').AsString := Part01;
+        qryU_Glkwa.Execsql;
+        GP_query_log(qryU_Glkwa, 'LD9Q03', 'U', 'Y');
+     end;
+    END;
+    END;
+END;
+end.
